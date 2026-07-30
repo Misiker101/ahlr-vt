@@ -1,5 +1,5 @@
 """
-train.py -- trains one architecture variant at a time.
+trains one architecture variant at a time.
 
 Usage:
     python -m src.train --variant AHLR-VT
@@ -7,7 +7,7 @@ Usage:
 """
 
 from .dependency_check import check_dependencies
-check_dependencies()  # exits with a clear message if `pip install -r requirements.txt` wasn't run
+check_dependencies()
 
 import os
 import random
@@ -29,9 +29,7 @@ from .evaluate import calculate_metrics, validate_model
 def train_variant(variant_name, train_dataset, val_dataset, max_epochs=100,
                    patience=10, batch_size=8, accumulation_steps=4, lr=1e-4,
                    weight_decay=1e-5, seed=None, num_workers=0):
-    """Real patience-based early stopping on validation-loss plateau (the
-    original notebook's train_model() ran a fixed 100 epochs without an
-    actual stopping rule, despite the manuscript describing early stopping)."""
+    
     if seed is not None:
         random.seed(seed); np.random.seed(seed)
         torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)

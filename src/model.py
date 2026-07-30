@@ -1,7 +1,6 @@
 """
-model.py -- AHLR-VT architecture: CNN feature extractor + (depth-configurable)
-ViT-Base/16 encoder + CTC output head, plus the variant registry used to
-generate the parameter-scaled ablation family (depth 2/4/6/8/12).
+the variant registry used to generate the parameter-scaled 
+ablation family (depth 2/4/6/8/12).
 """
 
 import os

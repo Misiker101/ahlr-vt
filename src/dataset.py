@@ -2,17 +2,6 @@
 dataset.py -- AHLD-29K loading, vocab construction, and the PyTorch Dataset
 used for training/evaluating AHLR-VT.
 
-CHANGED from the original notebook: images are no longer read from
-Dataset/train_images/... on disk. They are streamed from your published
-Hugging Face dataset (misiker/AHLD-29k) via `datasets.load_dataset`, which
-already returns the writer-independent train/validation/test split:
-
-    DatasetDict({
-        train:      23911 rows,
-        validation:  3545 rows,
-        test:        2491 rows,
-    })
-    features: ['image', 'text', 'file_name', 'writer_id']
 """
 
 import os
@@ -28,8 +17,7 @@ from datasets import load_dataset, DatasetDict
 
 HF_DATASET_ID = "misiker/AHLD-29k"
 
-# CHANGED: [BLANK] must stay at index 0 -- CTCLoss(blank=0) and every decode
-# function in evaluate.py assume this.
+
 SPECIAL_TOKENS = ["[BLANK]", "<SPACE>", "<UNK>"]
 
 
@@ -48,19 +36,7 @@ def load_ahld29k(cache_dir=None) -> DatasetDict:
 # ---------------------------------------------------------------------------
 def build_or_load_vocab(hf_dataset_dict: DatasetDict, vocab_path: str = "vocab.json",
                          split_for_vocab: str = "train", force_rebuild: bool = False):
-    """
-    The original notebook shipped a fixed vocab.txt (313 tokens: 3 special +
-    310 Amharic/Latin/punctuation characters seen in the corpus). Since the
-    HF dataset doesn't include that file, we derive the vocab once from the
-    training split's text column and cache it to `vocab_path` (JSON, ordered
-    list) so every subsequent run -- and every teammate cloning the repo --
-    gets an IDENTICAL vocab -> identical class indices -> checkpoints stay
-    compatible across runs.
-
-    IMPORTANT: commit the generated vocab.json to your GitHub repo after the
-    first run, so training/evaluation always uses the same vocab even if the
-    HF dataset is later updated/reshuffled.
-    """
+    
     if os.path.exists(vocab_path) and not force_rebuild:
         with open(vocab_path, "r", encoding="utf-8") as f:
             vocab = json.load(f)

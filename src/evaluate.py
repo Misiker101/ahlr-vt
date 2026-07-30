@@ -18,9 +18,7 @@ RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
 # Metrics / decoding
-# ---------------------------------------------------------------------------
 def calculate_metrics(preds, targets, idx_to_char):
     total_cer, total_wer = 0.0, 0.0
     num_samples = len(preds)
@@ -90,11 +88,10 @@ def validate_model(model, val_loader, device, criterion, idx_to_char):
     return val_loss / n, total_cer / n, total_wer / n
 
 
-# ---------------------------------------------------------------------------
+
 # Per-line logged test-set evaluation -- the DataFrame every stats.py
 # function (bootstrap CI, paired significance, confusion, length robustness)
 # consumes.
-# ---------------------------------------------------------------------------
 def evaluate_on_test_set_logged(model, data_loader, criterion, idx_to_char, device, model_name):
     model.eval()
     rows, total_test_loss = [], 0.0

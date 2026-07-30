@@ -11,7 +11,7 @@ variants):
 """
 
 from .dependency_check import check_dependencies
-check_dependencies()  # exits with a clear message if `pip install -r requirements.txt` wasn't run
+check_dependencies()  
 
 import os
 import math
@@ -272,7 +272,6 @@ def main():
     print(f"Found trained checkpoints for: {trained_variants}")
 
     # 2.1 + 2.2: per-line logged evaluation for every trained variant
-    # -> results/<variant>_test_predictions.csv, one file per variant
     corpus_rows = {}
     for variant_name in trained_variants:
         model = load_variant_for_eval(variant_name, num_classes, device)
@@ -285,7 +284,6 @@ def main():
     print(eff_df.to_string(index=False))
 
     # 2.3: bootstrap CI, computed per variant
-    # -> results/bootstrap_ci_<variant>.csv
     bootstrap_results = {}
     for variant_name, df in corpus_rows.items():
         cer_point, cer_lo, cer_hi, _ = bootstrap_corpus_ci(df, "char_distance", "char_length")
@@ -299,8 +297,6 @@ def main():
               f"WER {wer_point:.2f}% [{wer_lo:.2f}, {wer_hi:.2f}]")
 
     # 2.4-2.7: everything relative to AHLR-VT
-    # -> results/significance_tests_summary.csv, confusion_top25.csv,
-    #    cer_vs_length.csv, greedy_vs_beam_comparison.csv
     if "AHLR-VT" in trained_variants:
         run_all_comparisons(proposed_name="AHLR-VT",
                              baseline_names=[v for v in trained_variants if v != "AHLR-VT"])
@@ -322,7 +318,6 @@ def main():
               "length robustness / beam search (these are all defined relative to the proposed model).")
 
     # 2.9: consolidated manuscript summary table -- one row per variant
-    # -> results/manuscript_summary_table.csv
     summary_rows = []
     for variant_name in trained_variants:
         eff_row = eff_df[eff_df["Model"] == variant_name]
