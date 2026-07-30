@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Training artifacts
+checkpoints/*.pth
+runs/
+
+# Generated results
+results/*.csv
+results/*.png
+
+# Hugging Face / torch caches
+.cache/
+*.cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Keep folder structure in git even though contents are ignored
+!checkpoints/.gitkeep
+!results/.gitkeep
+!runs/.gitkeep
