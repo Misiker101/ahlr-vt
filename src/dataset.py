@@ -99,12 +99,12 @@ class AmharicHFDataset(Dataset):
         text = sample["text"]
         filename = sample.get("file_name") or f"row_{idx}"
 
+        if self.augment and self.transform is not None:
+            img = self.transform(image=img)["image"]
+
         h, w = img.shape
         new_w = max(1, int(w * (self.img_height / h)))
         img = cv2.resize(img, (new_w, self.img_height))
-
-        if self.augment and self.transform is not None:
-            img = self.transform(image=img)["image"]
 
         img = img.astype("float32") / 255.0
         img_tensor = torch.from_numpy(img).unsqueeze(0)  # [1, H, W]
