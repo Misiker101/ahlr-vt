@@ -95,11 +95,10 @@ pip install -r requirements.txt
 
 ## 4. Training
 
-Training is **one architecture variant per command** it does not loop
-through every variant automatically. Run each one you want, one at a time
+Training is **one architecture variant per command**. Run each one variant one at a time
 
 
-### 4.2 Train the model (proposed model is AHLR-VT) / parameter-scaled variants
+### 4.1 Train the model (proposed model is AHLR-VT) / parameter-scaled variants
 
 ```bash
 python -m src.train --variant Hybrid-ViT-d8
@@ -115,7 +114,7 @@ analysis, length-robustness study, and beam-search comparison in Section 5
 are all defined **relative to** AHLR-VT and get skipped if it isn't trained.
 
 
-### 4.4 Useful training flags
+### 4.2 Useful training flags
 
 ```bash
 python -m src.train --variant AHLR-VT \
@@ -146,8 +145,7 @@ If you use this code or the AHLD-29K dataset, please cite:
 
 ```bibtex
 @article{zewde2026ahlrvt,
-  title   = {AHLR-VT: A Hybrid CNN--Vision Transformer Architecture for Offline
-             Amharic Handwritten Text-Line Recognition},
+  title   = {AHLR-VT: A Hybrid CNN-Vision Transformer Architecture for Offline Amharic Handwritten Text-Line Recognition},
   author  = {Zewde, Misiker Kassahun},
   year    = {2026},
 }
