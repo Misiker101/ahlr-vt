@@ -42,7 +42,10 @@ ahlr-vt/
 │   ├── model.py                <- HybridCNNViT architecture + variant registry (depth 2/4/6/8/12)
 │   ├── train.py                <- training loop with real early stopping (CLI entry point)
 │   ├── evaluate.py             <- CTC metrics/decoding, per-line logged evaluation, efficiency profiling
-│   └── stats.py                <- bootstrap CI, paired significance tests, confusion analysis, length robustness, greedy-vs-beam (CLI entry point)        
+│   └── stats.py                <- bootstrap CI, paired significance tests, confusion analysis, length robustness, greedy-vs-beam (CLI entry point)
+├── ablation_suite/              # Ablation & Depth Comparison/Study
+│   ├── ahlr_ablation_pipeline.py# Consolidated pipeline (Hybrid & Pure-ViT)
+│   └── README.md                # Execution instructions        
 ├── checkpoints/                <- created automatically; holds *.pth files
 ├── results/                    <- created automatically; holds all output CSVs
 └── runs/                       <- created automatically; TensorBoard logs
