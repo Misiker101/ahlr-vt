@@ -44,7 +44,7 @@ ahlr-vt/
 │   ├── evaluate.py             <- CTC metrics/decoding, per-line logged evaluation, efficiency profiling
 │   └── stats.py                <- bootstrap CI, paired significance tests, confusion analysis, length robustness, greedy-vs-beam (CLI entry point)
 ├── ablation_suite/              # Ablation & Depth Comparison/Study
-│   ├── ahlr_ablation_pipeline.py# Consolidated pipeline (Hybrid & Pure-ViT)
+│   ├── ahlr_vt_pipeline.py      # Consolidated pipeline (Hybrid & Pure-ViT)
 │   └── README.md                # Execution instructions        
 ├── checkpoints/                <- created automatically; holds *.pth files
 ├── results/                    <- created automatically; holds all output CSVs

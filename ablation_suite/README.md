@@ -2,6 +2,8 @@
 
 In addition to our modular pipeline in `src/`, we provide a standalone, consolidated script located in `ablation_suite/ahld_ablation_pipeline.py`. This script is designed for end-to-end reproducibility of the stem-ablation and depth-ablation studies presented in our research.
 
+we can train all the models (including the proposed) only using this file without the main module `src` along with different variants. Use this especially to experiment different components like pure vit or vit depth it is convenient.
+
 It unifies **both** architecture families across 5 transformer encoder depths ($d \in \{2, 4, 6, 8, 12\}$):
 1. **AHLR-VT (Hybrid CNN + ViT):** Uses our 4-block asymmetric CNN feature extractor combined with a truncated ViT encoder.
 2. **Pure-ViT (No CNN):** Replaces the CNN stem with a single non-overlapping 1D patch embedding ($H \times 4$), maintaining exact token sequence lengths for a direct structural comparison.
