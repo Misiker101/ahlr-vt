@@ -1,9 +1,3 @@
-"""
-evaluate.py -- CTC decoding/metrics, per-line logged test-set evaluation
-(the input every stats.py function needs), and the efficiency/complexity
-profile (params, FLOPs, latency, throughput, memory).
-"""
-
 import os
 import io
 import time
@@ -129,9 +123,8 @@ def evaluate_on_test_set_logged(model, data_loader, criterion, idx_to_char, devi
     return df, corpus_cer, corpus_wer
 
 
-# ---------------------------------------------------------------------------
+
 # Efficiency & complexity profile (params, FLOPs, latency, throughput, memory)
-# ---------------------------------------------------------------------------
 def get_mean_test_width(dataset, img_height=64, n_samples=500):
     idxs = random.sample(range(len(dataset)), min(n_samples, len(dataset)))
     widths = [dataset[i][0].shape[2] for i in idxs]

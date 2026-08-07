@@ -1,12 +1,5 @@
 """
-stats.py -- Part 2 statistical validation: bootstrap confidence intervals,
-paired significance testing (t-test + Wilcoxon + Cohen's d), character
-confusion analysis, line-length robustness, and greedy-vs-beam decoding
-comparison. Also the top-level CLI that runs the whole suite across every
-trained variant.
-
-Usage (after training at least AHLR-VT, and optionally the Hybrid-ViT-dN
-variants):
+Usage (after training the variants):
     python -m src.stats
 """
 
@@ -37,9 +30,8 @@ RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
+
 # 2.3 -- Bootstrap CI
-# ---------------------------------------------------------------------------
 def bootstrap_corpus_ci(df, distance_col, length_col, n_boot=10000, ci=95, seed=42):
     rng = np.random.default_rng(seed)
     n = len(df)
@@ -54,9 +46,7 @@ def bootstrap_corpus_ci(df, distance_col, length_col, n_boot=10000, ci=95, seed=
     return point_estimate, lower, upper, boot_estimates
 
 
-# ---------------------------------------------------------------------------
 # 2.4 -- Paired significance testing
-# ---------------------------------------------------------------------------
 def paired_significance_test(csv_a, csv_b, name_a, name_b, metric="line_cer"):
     df_a = pd.read_csv(csv_a)[["filename", metric]].rename(columns={metric: f"{metric}_a"})
     df_b = pd.read_csv(csv_b)[["filename", metric]].rename(columns={metric: f"{metric}_b"})
@@ -115,9 +105,8 @@ def run_all_comparisons(proposed_name="AHLR-VT", baseline_names=None):
     return results_df
 
 
-# ---------------------------------------------------------------------------
+
 # 2.5 -- Character confusion analysis
-# ---------------------------------------------------------------------------
 def build_substitution_confusion(df, top_n=25):
     confusion = Counter()
     insertion_count = deletion_count = 0
@@ -140,9 +129,7 @@ def build_substitution_confusion(df, top_n=25):
     return conf_df, confusion, composition
 
 
-# ---------------------------------------------------------------------------
 # 2.6 -- Length robustness
-# ---------------------------------------------------------------------------
 def cer_vs_length_analysis(df, n_bins=8):
     df = df.copy()
     df["length_bin"] = pd.qcut(df["char_length"], q=n_bins, duplicates="drop")
@@ -155,9 +142,7 @@ def cer_vs_length_analysis(df, n_bins=8):
     return grouped
 
 
-# ---------------------------------------------------------------------------
 # 2.7 -- Greedy vs. beam search
-# ---------------------------------------------------------------------------
 def ctc_prefix_beam_search(log_probs, idx_to_char, beam_width=10, blank_idx=0):
     T, V = log_probs.shape
     log_probs = log_probs.cpu().numpy()
@@ -254,9 +239,7 @@ def compare_greedy_vs_beam(model, data_loader, idx_to_char, device, n_lines=300,
     return summary
 
 
-# ---------------------------------------------------------------------------
 # Full Part-2 validation CLI -- loops over every trained variant
-# ---------------------------------------------------------------------------
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset, val_dataset, test_dataset, vocab = get_datasets()

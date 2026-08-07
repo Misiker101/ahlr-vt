@@ -1,9 +1,3 @@
-"""
-dataset.py -- AHLD-29K loading, vocab construction, and the PyTorch Dataset
-used for training/evaluating AHLR-VT.
-
-"""
-
 import os
 import json
 
@@ -21,19 +15,15 @@ HF_DATASET_ID = "misiker/AHLD-29k"
 SPECIAL_TOKENS = ["[BLANK]", "<SPACE>", "<UNK>"]
 
 
-# ---------------------------------------------------------------------------
+
 # Loading the Hugging Face dataset
-# ---------------------------------------------------------------------------
 def load_ahld29k(cache_dir=None) -> DatasetDict:
-    """Downloads/streams misiker/AHLD-29k and returns the DatasetDict with
-    train/validation/test splits, exactly as printed in your snippet."""
     ds = load_dataset(HF_DATASET_ID, cache_dir=cache_dir)
     return ds
 
 
-# ---------------------------------------------------------------------------
-# Vocab
-# ---------------------------------------------------------------------------
+
+# Vocab generation
 def build_or_load_vocab(hf_dataset_dict: DatasetDict, vocab_path: str = "vocab.json",
                          split_for_vocab: str = "train", force_rebuild: bool = False):
     
@@ -54,11 +44,9 @@ def build_or_load_vocab(hf_dataset_dict: DatasetDict, vocab_path: str = "vocab.j
     return vocab
 
 
-# ---------------------------------------------------------------------------
 # PyTorch Dataset wrapping one HF split
-# ---------------------------------------------------------------------------
+# Wraps one split (train/validation/test) of the HF DatasetDict.
 class AmharicHFDataset(Dataset):
-    """Wraps one split (train/validation/test) of the HF DatasetDict."""
 
     def __init__(self, hf_split, vocab, img_height=64, augment=False):
         self.ds = hf_split
@@ -91,9 +79,8 @@ class AmharicHFDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.ds[idx]
 
-        # CHANGED: image now comes from the HF `Image` feature (decoded to a
-        # PIL.Image automatically) instead of cv2.imread() from disk.
-        pil_img = sample["image"].convert("L")  # ensure single-channel grayscale
+        
+        pil_img = sample["image"].convert("L")  
         img = np.array(pil_img)
 
         text = sample["text"]
@@ -134,12 +121,9 @@ def collate_fn(batch):
 
     return padded_images, padded_targets, target_lengths, texts, filenames
 
-
+# Convenience one-liner used by train.py / evaluate.py / stats.py.
 def get_datasets(img_height=64, vocab_path="vocab.json", cache_dir=None):
-    """Convenience one-liner used by train.py / evaluate.py / stats.py.
-
-    Returns (train_dataset, val_dataset, test_dataset, vocab).
-    """
+    
     hf_ds = load_ahld29k(cache_dir=cache_dir)
     vocab = build_or_load_vocab(hf_ds, vocab_path=vocab_path, split_for_vocab="train")
 

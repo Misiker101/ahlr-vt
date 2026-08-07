@@ -13,17 +13,14 @@ import torchvision.models as models
 CKPT_DIR = "checkpoints"
 os.makedirs(CKPT_DIR, exist_ok=True)
 
-# ---------------------------------------------------------------------------
-# Variant registry -- single source of truth used by train.py, evaluate.py,
-# and stats.py so every downstream table/test picks up new variants
-# automatically once they're added here.
-# ---------------------------------------------------------------------------
+
+# Variant registry 
 MODEL_CONFIGS = {
     "AHLR-VT": dict(vit_depth=12),        # proposed, full ViT-Base/16 encoder (~87.04M params)
     "Hybrid-ViT-d8": dict(vit_depth=8),    # ~58.69M
     "Hybrid-ViT-d6": dict(vit_depth=6),    # ~44.52M
     "Hybrid-ViT-d4": dict(vit_depth=4),    # ~30.34M
-    "Hybrid-ViT-d2": dict(vit_depth=2),    # ~16.16M -- closest param match to ResNet18-Transformer-CTC (17.83M)
+    "Hybrid-ViT-d2": dict(vit_depth=2),    # ~16.16M 
 }
 
 
@@ -42,13 +39,6 @@ class PositionalEncoding1D(nn.Module):
 
 
 class HybridCNNViT(nn.Module):
-    """CNN + ViT-Base/16 encoder + CTC head.
-
-    `vit_depth` truncates the 12-block ViT-Base/16 encoder to the first N
-    blocks, giving a same-CNN, same-embedding-dim family of models for a
-    true single-factor depth ablation / parameter-scaled efficiency
-    comparison. vit_depth=12 reproduces the original TrueHybridViT_NoGRU.
-    """
 
     def __init__(self, num_classes, hidden_dim=256, vit_depth=12):
         super().__init__()
