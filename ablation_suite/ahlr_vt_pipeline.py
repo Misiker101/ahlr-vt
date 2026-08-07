@@ -1,6 +1,6 @@
 """
 USAGE
------
+
 Train the proposed model:
     python ahlr_vt_pipeline.py train --variant AHLR-VT --fresh
 
@@ -10,6 +10,11 @@ Train the Hybrid-CNN-ViT depth-ablation variants:
     python ahlr_vt_pipeline.py train --variant Hybrid-ViT-d4
     python ahlr_vt_pipeline.py train --variant Hybrid-ViT-d2
 
+
+Train the Hybrid-ResNet18-ViT stem-ablation variants:
+    python ahlr_vt_pipeline.py train --variant Hybrid-ResNet18-ViT-d12 --fresh
+    python ahlr_vt_pipeline.py train --variant Hybrid-ResNet18-ViT-d6 --fresh
+
 Train the Pure-ViT (no CNN) stem-ablation variants:
     python ahlr_vt_pipeline.py train --variant Pure-ViT-d12
     python ahlr_vt_pipeline.py train --variant Pure-ViT-d8
@@ -17,8 +22,9 @@ Train the Pure-ViT (no CNN) stem-ablation variants:
     python ahlr_vt_pipeline.py train --variant Pure-ViT-d4
     python ahlr_vt_pipeline.py train --variant Pure-ViT-d2
 
-Run the full Part-2 suite across every variant trained so far:
+Run the full Part-2 across every variant:
     python ahlr_vt_pipeline.py validate
+
 """
 
 import os
@@ -52,16 +58,14 @@ CKPT_DIR = "checkpoints"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(CKPT_DIR, exist_ok=True)
 
-# Identical to the notebook.
+
 VOCAB_PATH = "vocab.txt"
 TRAIN_DIR = "Dataset/train_images/output_lines"
 VAL_DIR = "Dataset/val_images/output_linesval"
 TEST_DIR = "Dataset/test_images/output_linestest_cleaned"
 
-# ---------------------------------------------------------------------------
+
 # Model variant registry
-# "family" selects TrueHybridViT_NoGRU (with CNN) vs. PureViT (no CNN).
-# ---------------------------------------------------------------------------
 MODEL_CONFIGS = {
     # Hybrid CNN + ViT family. AHLR-VT (vit_depth=12)
     "AHLR-VT":       dict(family="hybrid", vit_depth=12),  # proposed, ~87.04M params
@@ -69,6 +73,11 @@ MODEL_CONFIGS = {
     "Hybrid-ViT-d6": dict(family="hybrid", vit_depth=6),    # ~44.52M
     "Hybrid-ViT-d4": dict(family="hybrid", vit_depth=4),    # ~30.34M
     "Hybrid-ViT-d2": dict(family="hybrid", vit_depth=2),    # ~16.16M
+
+    # Backbone-ablation family: 
+    "Hybrid-ResNet18-ViT-d12": dict(family="hybrid_resnet18", vit_depth=12),
+    "Hybrid-ResNet18-ViT-d8": dict(family="hybrid_resnet18", vit_depth=8),
+    "Hybrid-ResNet18-ViT-d6": dict(family="hybrid_resnet18", vit_depth=6),
 
     # Pure ViT family -- no CNN feature extractor. Native patch embedding
     # instead, with patch height = full image height so the token sequence
@@ -84,6 +93,8 @@ MODEL_CONFIGS = {
 }
 
 
+
+# Dataset
 class AmharicDataset(Dataset):
     def __init__(self, root_dir, vocab_path, img_height=64, augment=False):
         self.root_dir = root_dir
@@ -142,7 +153,7 @@ class AmharicDataset(Dataset):
             img = augmented["image"]
 
         h, w = img.shape
-        new_w = int(w * (self.img_height / h))  # no floor guard -- matches notebook exactly
+        new_w = int(w * (self.img_height / h))  
         img = cv2.resize(img, (new_w, self.img_height))
 
         img = img.astype("float32") / 255.0
@@ -175,9 +186,8 @@ def collate_fn(batch):
     return padded_images, padded_targets, target_lengths, texts, filenames
 
 
-# ---------------------------------------------------------------------------
+
 # Models
-# ---------------------------------------------------------------------------
 class PositionalEncoding1D(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super().__init__()
@@ -193,7 +203,6 @@ class PositionalEncoding1D(nn.Module):
 
 
 class TrueHybridViT_NoGRU(nn.Module):
-    
 
     def __init__(self, num_classes, hidden_dim=256, vit_depth=12):
         super(TrueHybridViT_NoGRU, self).__init__()
@@ -204,6 +213,47 @@ class TrueHybridViT_NoGRU(nn.Module):
             nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
             nn.Conv2d(128, 256, kernel_size=3, padding=1), nn.ReLU(), nn.MaxPool2d((2, 1), (2, 1)),
             nn.Conv2d(256, hidden_dim, kernel_size=3, padding=1), nn.ReLU(), nn.MaxPool2d((2, 1), (2, 1)),
+        )
+
+        self.bridge = nn.Linear(hidden_dim * 4, 768)
+        self.pos_encoder = PositionalEncoding1D(768)
+
+        vit = models.vit_b_16(weights=None)
+        self.vit_layers = vit.encoder.layers[:vit_depth]
+        self.vit_ln = vit.encoder.ln
+
+        self.classifier = nn.Linear(768, num_classes)
+
+    def forward(self, x):
+        features = self.cnn(x)
+        b, c, h, w = features.size()
+        features = features.view(b, c * h, w).permute(0, 2, 1)
+        features = self.bridge(features)
+        features = self.pos_encoder(features)
+        trans_out = self.vit_layers(features)
+        trans_out = self.vit_ln(trans_out)
+        return self.classifier(trans_out)
+
+
+class TrueHybridViT_ResNet18(nn.Module):
+    
+    def __init__(self, num_classes, hidden_dim=256, vit_depth=12):
+        super(TrueHybridViT_ResNet18, self).__init__()
+        assert 1 <= vit_depth <= 12
+
+        resnet = models.resnet18(weights=None)
+
+        resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+
+        resnet.layer2[0].conv1.stride = (2, 1)
+        resnet.layer2[0].downsample[0].stride = (2, 1)
+        resnet.layer3[0].conv1.stride = (2, 1)
+        resnet.layer3[0].downsample[0].stride = (2, 1)
+
+        
+        self.cnn = nn.Sequential(
+            resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool,
+            resnet.layer1, resnet.layer2, resnet.layer3,
         )
 
         self.bridge = nn.Linear(hidden_dim * 4, 768)
@@ -266,6 +316,8 @@ def build_model(variant_name, num_classes):
     cfg = MODEL_CONFIGS[variant_name]
     if cfg["family"] == "hybrid":
         return TrueHybridViT_NoGRU(num_classes=num_classes, vit_depth=cfg["vit_depth"])
+    elif cfg["family"] == "hybrid_resnet18":
+        return TrueHybridViT_ResNet18(num_classes=num_classes, vit_depth=cfg["vit_depth"])
     elif cfg["family"] == "pure":
         return PureViT(num_classes=num_classes, patch_width=cfg["patch_width"], vit_depth=cfg["vit_depth"])
     else:
@@ -280,6 +332,7 @@ def ckpt_paths(variant_name):
     )
 
 
+# Metrics
 def calculate_metrics(preds, targets, idx_to_char):
     total_cer, total_wer = 0.0, 0.0
     num_samples = len(preds)
@@ -399,8 +452,7 @@ def train_model(variant_name, train_dataset, val_dataset, max_epochs=100,
 
     if os.path.exists(checkpoint_path):
         print(f"[{variant_name}] *** RESUMING from {checkpoint_path} *** "
-              f"(pass --fresh from scratch -- e.g. if this "
-              f"checkpoint was written by an earlier, different version of this script)")
+              f"pass --fresh from scratch -- e.g. if this ")
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -536,11 +588,8 @@ def load_variant_for_eval(variant_name, num_classes, device):
     return model
 
 
-# ---------------------------------------------------------------------------
-# Part 2.1 -- Efficiency & complexity profile. covers both the
-# hybrid's CNN+bridge and the pure-ViT's patch_embed (whichever the model
-# actually has), so one function serves both families.
-# ---------------------------------------------------------------------------
+
+# Part 2.1 -- Efficiency & complexity profile. 
 def get_mean_test_width(dataset, img_height=64, n_samples=500):
     idxs = random.sample(range(len(dataset)), min(n_samples, len(dataset)))
     widths = []
@@ -670,9 +719,7 @@ def build_efficiency_table_all_variants(test_dataset, num_classes, device, train
     return df
 
 
-# ---------------------------------------------------------------------------
-# Part 2.3 -- Bootstrap CI. Identical math to the notebook.
-# ---------------------------------------------------------------------------
+# Part 2.3 -- Bootstrap CI. 
 def bootstrap_corpus_ci(df, distance_col, length_col, n_boot=10000, ci=95, seed=42):
     rng = np.random.default_rng(seed)
     n = len(df)
@@ -690,11 +737,8 @@ def bootstrap_corpus_ci(df, distance_col, length_col, n_boot=10000, ci=95, seed=
     return point_estimate, lower, upper, boot_estimates
 
 
-# ---------------------------------------------------------------------------
+
 # Part 2.4 -- Paired significance testing. run_all_comparisons, EVERY pairwise
-# combination of trained variants, so it
-# scales automatically as we train more Hybrid-ViT-dN / Pure-ViT-dN checkpoints.
-# ---------------------------------------------------------------------------
 def paired_significance_test(csv_a, csv_b, name_a="AHLR-VT", name_b="Baseline", metric="line_cer"):
     df_a = pd.read_csv(csv_a)[["filename", metric]].rename(columns={metric: f"{metric}_a"})
     df_b = pd.read_csv(csv_b)[["filename", metric]].rename(columns={metric: f"{metric}_b"})
@@ -738,10 +782,7 @@ def paired_significance_test(csv_a, csv_b, name_a="AHLR-VT", name_b="Baseline", 
 
 
 def run_all_comparisons(trained_variants):
-    """Runs the paired comparison for EVERY pair of trained variants (both
-    Hybrid-ViT-dN and Pure-ViT-dN together), on both line_cer and line_wer.
-    This is what makes Part 2.4 generic across whatever we've trained.
-    """
+    
     all_results = []
     for name_a, name_b in itertools.combinations(trained_variants, 2):
         csv_a = os.path.join(RESULTS_DIR, f"{name_a.replace(' ', '_')}_test_predictions.csv")
@@ -761,6 +802,7 @@ def run_all_comparisons(trained_variants):
     return results_df
 
 
+# Part 2.5 -- Character-level confusion analysis. 
 def build_substitution_confusion(df, top_n=25):
     confusion = Counter()
     insertion_count = 0
@@ -788,6 +830,7 @@ def build_substitution_confusion(df, top_n=25):
     return conf_df, confusion, composition
 
 
+# Part 2.6 -- Length robustness.
 def cer_vs_length_analysis(df, n_bins=8):
     df = df.copy()
     df["length_bin"] = pd.qcut(df["char_length"], q=n_bins, duplicates="drop")
@@ -801,6 +844,7 @@ def cer_vs_length_analysis(df, n_bins=8):
     return grouped
 
 
+# Part 2.7 -- Greedy vs. beam search.
 def ctc_prefix_beam_search(log_probs, idx_to_char, beam_width=10, blank_idx=0):
     T, V = log_probs.shape
     log_probs = log_probs.cpu().numpy()
@@ -906,6 +950,7 @@ def compare_greedy_vs_beam(model, data_loader, idx_to_char, device, n_lines=300,
     return summary
 
 
+
 def main():
     parser = argparse.ArgumentParser(description="AHLR-VT / Pure-ViT training and Part-2 validation pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -978,7 +1023,7 @@ def main():
         run_all_comparisons(trained_variants)
 
         # confusion analysis, length robustness, greedy-vs-beam,
-        # run for EVERY trained variant (not just one hardcoded reference model)
+        # run for EVERY trained variant 
         for variant_name in trained_variants:
             df = corpus_rows[variant_name]
             tag = variant_name.replace(" ", "_")
